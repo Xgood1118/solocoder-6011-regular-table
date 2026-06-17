@@ -1,0 +1,69 @@
+<!--
+-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+-- ░░░░░░░░░░▄▀░█▀▄░█▀▀░█▀▀░█░█░█░░░█▀█░█▀▄░░░░░▀█▀░█▀█░█▀▄░█░░░█▀▀░▀▄░░░░░░░░░░
+-- ░░░░░░░░░▀▄░░█▀▄░█▀▀░█░█░█░█░█░░░█▀█░█▀▄░▀▀▀░░█░░█▀█░█▀▄░█░░░█▀▀░░▄▀░░░░░░░░░
+-- ░░░░░░░░░░░▀░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀░▀░░░░░░▀░░▀░▀░▀▀░░▀▀▀░▀▀▀░▀░░░░░░░░░░░
+-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+-- ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+-- ┃  *  Copyright (c) 2020, the Regular Table Authors. This file is part   *  ┃
+-- ┃  *  of the Regular Table library, distributed under the terms of the   *  ┃
+-- ┃  *  [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). *  ┃
+-- ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+-->
+
+<!doctype html>
+<html>
+    <head>
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"
+        />
+        <link rel="stylesheet" href="/dist/css/material.css" />
+    </head>
+    <body>
+        <regular-table></regular-table>
+
+        <script type="module">
+            import "/dist/esm/regular-table.js";
+
+            // Large data model for scroll traffic testing
+            const NUM_ROWS = 100000;
+            const NUM_COLUMNS = 100000;
+
+            const clamp = (x, y) => Math.floor(x / y) * y;
+            const range = (x0, x1, f) =>
+                Array.from(Array(x1 - x0).keys()).map((x) => f(x + x0));
+
+            async function dataListener(x0, y0, x1, y1) {
+                // Simulate lag
+                if (Math.random() > 0.3) {
+                    await new Promise((x) =>
+                        setTimeout(x, Math.round(Math.random() * 10)),
+                    );
+                }
+
+                return {
+                    num_rows: NUM_ROWS,
+                    num_columns: NUM_COLUMNS,
+                    row_headers: range(y0, y1, (i) => [
+                        `Group ${clamp(i, 10)}`,
+                        `Row ${i}`,
+                    ]),
+                    column_headers: range(x0, x1, (i) => [
+                        `Group ${clamp(i, 10)}`,
+                        `Column ${i}`,
+                    ]),
+                    data: range(x0, x1, (x) =>
+                        range(y0, y1, (y) => String(x + y)),
+                    ),
+                };
+            }
+
+            window.dataListener = dataListener;
+
+            const table = document.getElementsByTagName("regular-table")[0];
+            table.setDataListener(dataListener);
+            table.draw();
+        </script>
+    </body>
+</html>
