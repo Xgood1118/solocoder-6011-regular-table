@@ -420,8 +420,12 @@ export class RegularTableViewModel extends RegularTableViewModelBase {
                 );
 
             if (metadata?.size_key !== undefined) {
-                this._column_sizes.indices[metadata.size_key] =
-                    box.width / zoom;
+                if (
+                    this._column_sizes.override[metadata.size_key] === undefined
+                ) {
+                    this._column_sizes.indices[metadata.size_key] =
+                        box.width / zoom;
+                }
                 if (
                     box.width / zoom &&
                     this._column_sizes.override[metadata.size_key] === undefined

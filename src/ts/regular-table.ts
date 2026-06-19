@@ -110,6 +110,12 @@ export class RegularTableElement extends RegularViewEventModel {
      */
     restoreColumnSizes(sizes: Record<number, number>) {
         this._column_sizes.override = structuredClone(sizes);
+        for (const [key, value] of Object.entries(sizes)) {
+            const k = Number(key);
+            if (!isNaN(k)) {
+                this._column_sizes.indices[k] = value;
+            }
+        }
     }
 
     /**

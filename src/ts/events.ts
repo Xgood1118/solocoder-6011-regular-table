@@ -291,6 +291,30 @@ export class RegularViewEventModel extends RegularVirtualTableViewModel {
      * @param {`*`} event
      */
     async _on_click_or_dblclick(event: MouseEvent) {
+        let element = event.target as HTMLElement;
+        const is_resize = element.classList.contains("rt-column-resize");
+
+        while (
+            element &&
+            element.tagName !== "TD" &&
+            element.tagName !== "TH"
+        ) {
+            element = element.parentElement as HTMLElement;
+            if (!this.contains(element)) {
+                break;
+            }
+        }
+
+        const metadata =
+            element && this.contains(element)
+                ? METADATA_MAP.get(element as HTMLElement)
+                : undefined;
+
+        if (metadata?.type === "column_header" && !is_resize) {
+            await this._on_click(event);
+            return;
+        }
+
         const now = performance.now();
         if (this._last_clicked_time && now - this._last_clicked_time < 500) {
             this._last_clicked_time = now;
