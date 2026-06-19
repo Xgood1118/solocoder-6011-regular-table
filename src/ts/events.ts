@@ -11,8 +11,9 @@
 
 import { RegularVirtualTableViewModel } from "./scroll_panel";
 import { throttle_tag } from "./utils";
-import { CellMetadata } from "./types";
+import { CellMetadata, SortState } from "./types";
 import { METADATA_MAP } from "./view_model";
+import type { RegularTableElement } from "./regular-table";
 
 /**
  * When enabled, override iOS overscroll behavior by emulating scroll position
@@ -194,12 +195,17 @@ export class RegularViewEventModel extends RegularVirtualTableViewModel {
                 this._column_sizes.indices[metadata.size_key] = undefined;
             }
 
+            // Persist changes to localStorage
+            const thisTable = this as unknown as RegularTableElement;
+            thisTable._persistColumnSizesToStorage();
+
             // Update column width styles via adoptedStyleSheets
+            const num_columns = this.table_model.get_last_num_columns();
             this.table_model.updateColumnWidthStyles(
                 {
                     start_row: 0,
                     end_row: 0,
-                    ...this._calculate_column_range(0),
+                    ...this._calculate_column_range(num_columns),
                 },
                 this._view_cache.row_headers_length,
             );
@@ -257,7 +263,25 @@ export class RegularViewEventModel extends RegularVirtualTableViewModel {
                 metadata,
             );
             event.stopImmediatePropagation();
+        } else if (metadata?.type === "column_header") {
+            await this._on_sort_column(event, metadata);
+            event.stopImmediatePropagation();
         }
+    }
+
+    /**
+     * Handle column header click for sorting.
+     *
+     * @param event
+     * @param metadata
+     */
+    private async _on_sort_column(
+        event: MouseEvent,
+        metadata: CellMetadata,
+    ): Promise<void> {
+        const { size_key } = metadata;
+        const thisTable = this as unknown as RegularTableElement;
+        await thisTable.setSortState(size_key);
     }
 
     /**
@@ -315,6 +339,8 @@ export class RegularViewEventModel extends RegularVirtualTableViewModel {
             const should_redraw =
                 this._column_sizes.indices[size_key || 0] !== override_width;
             this._column_sizes.indices[size_key || 0] = override_width;
+            const thisTable = this as unknown as RegularTableElement;
+            thisTable._persistColumnSizesToStorage();
             if (should_redraw) {
                 this.draw({ cache: true });
             }
@@ -356,11 +382,13 @@ export class RegularViewEventModel extends RegularVirtualTableViewModel {
             });
         } else {
             // Update column width styles via adoptedStyleSheets
+            // Get the correct viewport range for the current number of columns
+            const num_columns = this.table_model.get_last_num_columns();
             this.table_model.updateColumnWidthStyles(
                 {
                     start_row: 0,
                     end_row: 0,
-                    ...this._calculate_column_range(0),
+                    ...this._calculate_column_range(num_columns),
                 },
                 this._view_cache.row_headers_length,
             );

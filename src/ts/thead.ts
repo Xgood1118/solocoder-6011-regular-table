@@ -18,6 +18,8 @@ import {
     CellMetadataRowHeader,
     CellMetadataColumnHeader,
     CellMetadataBuilder,
+    SortDirection,
+    SortState,
 } from "./types";
 
 /**
@@ -34,6 +36,7 @@ export class RegularHeaderViewModel extends ViewModel {
         number,
     ][];
     private _offset_cache: number[];
+    public _sort_state: SortState = { column_key: null, direction: null };
 
     constructor(
         column_sizes: ColumnSizes,
@@ -49,6 +52,8 @@ export class RegularHeaderViewModel extends ViewModel {
         offset_cache: number[],
         d: number,
         column: unknown,
+        size_key?: number,
+        is_bottom_level: boolean = false,
     ): HTMLTableCellElement {
         const th = this._get_cell("TH", d, offset_cache[d] || 0);
         offset_cache[d] += 1;
@@ -60,6 +65,22 @@ export class RegularHeaderViewModel extends ViewModel {
             const span = this._span_factory.get();
             span.textContent = String(column ?? "");
             th.appendChild(span);
+        }
+
+        if (
+            is_bottom_level &&
+            size_key !== undefined &&
+            this._sort_state.column_key === size_key &&
+            this._sort_state.direction
+        ) {
+            const sortArrow = this._span_factory.get();
+            sortArrow.className =
+                this._sort_state.direction === "asc"
+                    ? "rt-sort-arrow rt-sort-asc"
+                    : "rt-sort-arrow rt-sort-desc";
+            sortArrow.textContent =
+                this._sort_state.direction === "asc" ? "▲" : "▼";
+            th.appendChild(sortArrow);
         }
 
         const resizeSpan = this._span_factory.get();
@@ -123,7 +144,11 @@ export class RegularHeaderViewModel extends ViewModel {
         _virtual_x: number,
         column_header_merge_depth: number | undefined,
         merge_headers: boolean,
+        sort_state?: SortState,
     ): HeaderDrawResult | undefined {
+        if (sort_state) {
+            this._sort_state = sort_state;
+        }
         const header_levels = parts?.length; //config.column_pivots.length + 1;
         if (header_levels === 0) {
             return;
@@ -161,12 +186,20 @@ export class RegularHeaderViewModel extends ViewModel {
                         this._offset_cache,
                         d,
                         column_name,
+                        Array.isArray(size_key) ? size_key[0] : size_key,
+                        false,
                     );
                     metadata = this._draw_group(parts, column_name, th);
                     this._group_header_cache[d] = [metadata, th, 1];
                 }
             } else {
-                th = this._draw_group_th(this._offset_cache, d, column_name);
+                th = this._draw_group_th(
+                    this._offset_cache,
+                    d,
+                    column_name,
+                    Array.isArray(size_key) ? size_key[0] : size_key,
+                    true,
+                );
 
                 // Update the group header's metadata such that each group
                 // header has the same metadata coordinates of its rightmost

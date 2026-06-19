@@ -25,6 +25,8 @@ import {
     Viewport,
     DataResponse,
     ViewState,
+    SortDirection,
+    SortState,
 } from "./types";
 import { ColumnSizes } from "./types";
 
@@ -87,6 +89,7 @@ abstract class RegularTableViewModelBase {
         column_header_merge_depth: number | undefined,
         merge_column_headers: boolean,
         merge_row_headers: boolean,
+        sort_state?: SortState,
     ): RowHeadersResult {
         const column_name = [`${row_headers_length}`];
         const last_cells: CellTuple[] = [];
@@ -123,6 +126,7 @@ abstract class RegularTableViewModelBase {
                 i,
                 column_header_merge_depth,
                 merge_column_headers,
+                sort_state,
             );
             if (!!header) {
                 cont_heads.push(header);
@@ -201,6 +205,7 @@ abstract class RegularTableViewModelBase {
         column_header_merge_depth: number | undefined,
         merge_column_headers: boolean,
         merge_row_headers: boolean,
+        sort_state?: SortState,
     ): DataColumnDrawResult {
         const column_name = view_response.column_headers?.[dcidx] || [];
         const column_data = view_response.data[dcidx];
@@ -226,6 +231,7 @@ abstract class RegularTableViewModelBase {
             _virtual_x,
             column_header_merge_depth,
             merge_column_headers,
+            sort_state,
         );
 
         const cont_body = this.body.draw(
@@ -255,6 +261,8 @@ abstract class RegularTableViewModelBase {
         num_columns: number,
         _virtual_x: number,
         x0: number,
+        sort_column_key: number | null = null,
+        sort_direction: SortDirection = null,
     ): Promise<FetchResult> {
         let missing_cidx = Math.max(dcidx + Math.floor(x0), 0);
         const new_viewport = structuredClone(viewport);
@@ -273,6 +281,8 @@ abstract class RegularTableViewModelBase {
             Math.floor(new_viewport.start_row),
             Math.ceil(new_viewport.end_col),
             Math.ceil(new_viewport.end_row),
+            sort_column_key,
+            sort_direction,
         );
 
         let column_header_merge_depth: number | undefined;
@@ -362,6 +372,10 @@ export class RegularTableViewModel extends RegularTableViewModelBase {
 
     num_columns(): number {
         return this.header.num_columns();
+    }
+
+    get_last_num_columns(): number {
+        return this._lastDataResponse?.num_columns || 0;
     }
 
     clear(element: HTMLElement): void {
@@ -539,9 +553,20 @@ export class RegularTableViewModel extends RegularTableViewModelBase {
         this._lastColumnWidthCss = css;
     }
 
-    async _getDimState(view_cache: ViewCache): Promise<DataResponse> {
+    async _getDimState(
+        view_cache: ViewCache,
+        sort_column_key: number | null = null,
+        sort_direction: SortDirection = null,
+    ): Promise<DataResponse> {
         if (!this._lastDataResponse) {
-            return await view_cache.view(0, 0, 0, 0);
+            return await view_cache.view(
+                0,
+                0,
+                0,
+                0,
+                sort_column_key,
+                sort_direction,
+            );
         }
 
         return this._lastDataResponse!;
@@ -560,6 +585,8 @@ export class RegularTableViewModel extends RegularTableViewModelBase {
         viewport: Viewport,
         num_columns: number,
         style_callback: (last_cells: CellTuple) => Promise<undefined>,
+        sort_column_key: number | null = null,
+        sort_direction: SortDirection = null,
     ): Promise<undefined> {
         const { width: container_width, height: container_height } =
             container_size;
@@ -570,6 +597,8 @@ export class RegularTableViewModel extends RegularTableViewModelBase {
             Math.floor(viewport.start_row),
             Math.ceil(viewport.end_col),
             Math.ceil(viewport.end_row),
+            sort_column_key,
+            sort_direction,
         ));
 
         let { column_header_merge_depth, merge_headers = "both" } =
@@ -613,6 +642,10 @@ export class RegularTableViewModel extends RegularTableViewModelBase {
         let _virtual_x = 0;
         let last_cells: CellTuple[] = [];
         let first_col = true;
+        const sort_state: SortState = {
+            column_key: sort_column_key,
+            direction: sort_direction,
+        };
 
         if (view_response.row_headers?.length) {
             const row_header_result = this._drawRowHeaders(
@@ -626,6 +659,7 @@ export class RegularTableViewModel extends RegularTableViewModelBase {
                 column_header_merge_depth,
                 merge_column_headers,
                 merge_row_headers,
+                sort_state,
             );
             cont_body = row_header_result.cont_body;
             first_col = row_header_result.first_col;
@@ -658,6 +692,8 @@ export class RegularTableViewModel extends RegularTableViewModelBase {
                         num_columns,
                         _virtual_x,
                         x0,
+                        sort_column_key,
+                        sort_direction,
                     );
 
                     if (fetch_result.column_header_merge_depth !== undefined) {
@@ -703,6 +739,7 @@ export class RegularTableViewModel extends RegularTableViewModelBase {
                         column_header_merge_depth,
                         merge_column_headers,
                         merge_row_headers,
+                        sort_state,
                     );
 
                 cont_body = drawn_body;

@@ -11,6 +11,13 @@
 
 import type { RegularTableElement } from "./regular-table.ts";
 
+export type SortDirection = "asc" | "desc" | null;
+
+export interface SortState {
+    column_key: number | null;
+    direction: SortDirection;
+}
+
 /**
  * The `DataListener` is similar to a normal event listener function.
  * Unlike a normal event listener, it takes regular arguments (not an
@@ -21,6 +28,8 @@ import type { RegularTableElement } from "./regular-table.ts";
  * @param {number} y0 - The origin `y` index (row).
  * @param {number} x1 - The corner `x` index (column).
  * @param {number} y1 - The corner `y` index (row).
+ * @param {number} [sort_column_key] - The column key to sort by.
+ * @param {SortDirection} [sort_direction] - The sort direction ("asc" or "desc").
  * @returns {Promise<DataResponse>} The resulting `DataResponse`.  Make sure
  * to `resolve` or `reject` the `Promise`, or your `<regular-table>` will
  * never render!
@@ -30,6 +39,8 @@ export type DataListener = (
     y0: number,
     x1: number,
     y1: number,
+    sort_column_key?: number | null,
+    sort_direction?: SortDirection,
 ) => Promise<DataResponse>;
 
 /**
@@ -361,6 +372,8 @@ export type ViewFunction = (
     start_row: number,
     end_col: number,
     end_row: number,
+    sort_column_key?: number | null,
+    sort_direction?: SortDirection,
 ) => Promise<DataResponse>;
 
 /**

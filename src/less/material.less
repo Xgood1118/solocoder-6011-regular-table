@@ -113,6 +113,26 @@ regular-table {
         top: 0;
         right: 0;
         cursor: col-resize;
+        user-select: none;
+        z-index: 10;
+    }
+
+    .rt-sort-arrow {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 10px;
+        pointer-events: none;
+        line-height: 1;
+    }
+
+    .rt-sort-asc {
+        color: #333;
+    }
+
+    .rt-sort-desc {
+        color: #333;
     }
 
     // webkit (chrome, safari, etc) scrollbar styling

@@ -23,6 +23,8 @@ import {
     Viewport,
     ViewportValidation,
     VirtualMode,
+    SortDirection,
+    SortState,
 } from "./types";
 
 // @ts-ignore - CSS imports handled by build system
@@ -95,6 +97,7 @@ export class RegularVirtualTableViewModel extends HTMLElement {
     protected _is_styling?: boolean;
     protected table_model!: RegularTableViewModel;
     protected _style_callbacks!: Array<StyleCallback>;
+    protected _sort_state: SortState = { column_key: null, direction: null };
     private _probe_element?: [HTMLElement, HTMLElement];
 
     /**
@@ -545,7 +548,11 @@ async function internal_draw(
         num_row_headers,
         num_column_headers,
         row_height,
-    } = await this.table_model._getDimState(this._view_cache);
+    } = await this.table_model._getDimState(
+        this._view_cache,
+        this._sort_state.column_key,
+        this._sort_state.direction,
+    );
 
     this._column_sizes.row_height = row_height || this._column_sizes.row_height;
     if (!this._column_sizes.row_height) {
@@ -605,6 +612,8 @@ async function internal_draw(
                     await callback({ detail: this as RegularTableElement });
                 }
             },
+            this._sort_state.column_key,
+            this._sort_state.direction,
         );
 
         const old_height = this._column_sizes.row_height;

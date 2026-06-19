@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+        <title>Regular Table - Column Resize & Sort Test</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }
+            regular-table {
+                width: 800px;
+                height: 500px;
+                margin-top: 20px;
+            }
+            .controls {
+                margin-bottom: 20px;
+            }
+            button {
+                margin-right: 10px;
+                padding: 8px 16px;
+                font-size: 14px;
+                cursor: pointer;
+            }
+            .info {
+                margin-top: 20px;
+                padding: 10px;
+                background-color: #f0f0f0;
+                border-radius: 4px;
+                font-family: monospace;
+                font-size: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Regular Table - Column Resize & Sort Test</h1>
+        <div class="controls">
+            <button id="clearStorage">Clear localStorage</button>
+            <button id="resetSort">Reset Sort</button>
+            <button id="getSortState">Get Sort State</button>
+        </div>
+        <regular-table id="regularTable"></regular-table>
+        <div class="info" id="info"></div>
+        
+        <link rel="stylesheet" href="./dist/css/material.css" />
+        <script type="module">
+            import "./dist/esm/regular-table.js";
+
+            const table = document.getElementById("regularTable");
+            const info = document.getElementById("info");
+
+            let data = [];
+            const NUM_ROWS = 100;
+            const NUM_COLS = 20;
+
+            function generateData() {
+                data = [];
+                for (let y = 0; y < NUM_ROWS; y++) {
+                    const row = [];
+                    for (let x = 0; x < NUM_COLS; x++) {
+                        row.push({
+                            value: (y + 1) * (x + 1),
+                            text: `Cell ${y}-${x}`,
+                        });
+                    }
+                    data.push(row);
+                }
+            }
+
+            generateData();
+
+            function dataListener(x0, y0, x1, y1, sort_column_key, sort_direction) {
+                console.log("dataListener called:", { x0, y0, x1, y1, sort_column_key, sort_direction });
+                
+                let viewData = data;
+                
+                if (sort_column_key !== null && sort_column_key !== undefined && sort_direction) {
+                    viewData = [...data].sort((a, b) => {
+                        const valA = a[sort_column_key]?.value || 0;
+                        const valB = b[sort_column_key]?.value || 0;
+                        return sort_direction === "asc" ? valA - valB : valB - valA;
+                    });
+                }
+
+                const row_headers = Array.from({ length: y1 - y0 }, (_, i) => [
+                    `Row ${i + y0 + 1}`,
+                ]);
+
+                const column_headers = Array.from({ length: x1 - x0 }, (_, i) => [
+                    `Group ${Math.floor((i + x0) / 5) + 1}`,
+                    `Column ${i + x0 + 1}`,
+                ]);
+
+                const viewport_data = Array.from({ length: x1 - x0 }, (_, i) =>
+                    Array.from({ length: y1 - y0 }, (_, j) => {
+                        const cell = viewData[j + y0]?.[i + x0];
+                        return cell ? cell.text : "";
+                    })
+                );
+
+                return {
+                    num_rows: NUM_ROWS,
+                    num_columns: NUM_COLS,
+                    row_headers,
+                    column_headers,
+                    data: viewport_data,
+                };
+            }
+
+            table.setDataListener(dataListener);
+            table.draw();
+
+            document.getElementById("clearStorage").addEventListener("click", () => {
+                localStorage.clear();
+                location.reload();
+            });
+
+            document.getElementById("resetSort").addEventListener("click", async () => {
+                await table.setSortState(null);
+                updateInfo();
+            });
+
+            document.getElementById("getSortState").addEventListener("click", () => {
+                const state = table.getSortState();
+                alert(`Sort State:\nColumn: ${state.column_key}\nDirection: ${state.direction}`);
+            });
+
+            function updateInfo() {
+                const sortState = table.getSortState();
+                const columnSizes = table.saveColumnSizes();
+                info.innerHTML = `
+                    <strong>Sort State:</strong> Column=${sortState.column_key}, Direction=${sortState.direction}<br/>
+                    <strong>Column Sizes:</strong> ${JSON.stringify(columnSizes)}<br/>
+                    <strong>localStorage:</strong> ${localStorage.getItem("regular-table-column-sizes") || "empty"}
+                `;
+            }
+
+            table.addEventListener("regular-table-scroll", updateInfo);
+            table.addEventListener("click", () => setTimeout(updateInfo, 100));
+
+            setTimeout(updateInfo, 500);
+        </script>
+    </body>
+</html>

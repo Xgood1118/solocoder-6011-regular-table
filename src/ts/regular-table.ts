@@ -16,6 +16,8 @@ import {
     DataListener,
     FPSRecord,
     SetDataListenerOptions,
+    SortDirection,
+    SortState,
 } from "./types";
 import { get_draw_fps } from "./utils";
 import { METADATA_MAP } from "./view_model";
@@ -45,12 +47,14 @@ export type ResetAutoSizeOptions = {
  */
 export class RegularTableElement extends RegularViewEventModel {
     _initialized!: boolean;
+    private _localStorageKey!: string;
 
     constructor() {
         super();
         this._column_sizes = { auto: [], override: {}, indices: [] } as any;
         this._style_callbacks = [];
         this._initialized = false;
+        this._localStorageKey = `regular-table-column-sizes`;
     }
 
     connectedCallback() {
@@ -64,6 +68,7 @@ export class RegularTableElement extends RegularViewEventModel {
                 this._column_sizes,
                 this,
             );
+            this._restoreColumnSizesFromStorage();
         }
     }
 
@@ -105,6 +110,69 @@ export class RegularTableElement extends RegularViewEventModel {
      */
     restoreColumnSizes(sizes: Record<number, number>) {
         this._column_sizes.override = structuredClone(sizes);
+    }
+
+    /**
+     * Persist column sizes to localStorage.
+     */
+    _persistColumnSizesToStorage(): void {
+        try {
+            const sizes = this.saveColumnSizes();
+            localStorage.setItem(this._localStorageKey, JSON.stringify(sizes));
+        } catch (e) {
+            console.warn("Failed to persist column sizes to localStorage:", e);
+        }
+    }
+
+    /**
+     * Restore column sizes from localStorage.
+     */
+    _restoreColumnSizesFromStorage(): void {
+        try {
+            const stored = localStorage.getItem(this._localStorageKey);
+            if (stored) {
+                const sizes = JSON.parse(stored);
+                this.restoreColumnSizes(sizes);
+            }
+        } catch (e) {
+            console.warn("Failed to restore column sizes from localStorage:", e);
+        }
+    }
+
+    /**
+     * Get the current sort state.
+     *
+     * @returns The current sort state containing column key and direction.
+     */
+    getSortState(): SortState {
+        return { ...this._sort_state };
+    }
+
+    /**
+     * Set the sort state and trigger a redraw with sorted data.
+     *
+     * @param column_key The column key to sort by, or null to clear sorting.
+     * @param direction The sort direction ("asc", "desc", or null to toggle).
+     */
+    async setSortState(
+        column_key: number | null,
+        direction?: SortDirection,
+    ): Promise<void> {
+        if (column_key === null) {
+            this._sort_state = { column_key: null, direction: null };
+        } else if (direction) {
+            this._sort_state = { column_key, direction };
+        } else if (this._sort_state.column_key === column_key) {
+            this._sort_state = {
+                column_key,
+                direction: this._sort_state.direction === "asc" ? "desc" : "asc",
+            };
+        } else {
+            this._sort_state = { column_key, direction: "asc" };
+        }
+
+        this._invalid_schema = true;
+        await this.draw();
     }
 
     /**
